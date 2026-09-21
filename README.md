@@ -1,7 +1,15 @@
 # Prowler Report Generator
 
 Turn raw [Prowler](https://github.com/prowler-cloud/prowler) scan output into a
-**reporting-friendly, searchable HTML report**.
+**reporting-friendly, searchable HTML report** — and into a **team assignment
+Excel tracker**.
+
+This project ships two tools:
+
+| Tool | Output | Needs |
+| --- | --- | --- |
+| `prowler_report.py` | Searchable/filterable HTML report | nothing (stdlib only) |
+| `prowler_excel_tracker.py` | Styled `.xlsx` assignment tracker | `openpyxl` |
 
 Prowler reports **one row per affected resource**, so the same check (same
 `CHECK_ID` + same `CHECK_TITLE`) is repeated once for every affected ARN. That is
@@ -34,7 +42,12 @@ self-contained HTML report.
 ## Requirements
 
 - Python **3.8+** (tested on 3.14)
-- No third-party packages
+- `prowler_report.py` — standard library only (no dependencies)
+- `prowler_excel_tracker.py` — requires [`openpyxl`](https://openpyxl.readthedocs.io/)
+
+```bash
+pip install openpyxl
+```
 
 ---
 
@@ -119,11 +132,81 @@ Severity        : critical=2, high=19, medium=103, low=27
 
 ---
 
+---
+
+## Excel assignment tracker
+
+`prowler_excel_tracker.py` reads the same Prowler output, groups rows the same way
+(one finding per check ID + check title) and writes a styled `.xlsx` tracker for
+handing findings to your team.
+
+Columns produced:
+
+```
+No. | Check ID | Issue Title | Severity | Assign | Status | Comments
+```
+
+- **Severity** is added automatically (Critical / High / Medium / Low / Informational).
+- **Assign** is a dropdown populated with your team members.
+- **Status** is a dropdown (Pending / Validated / False Positive / Escalated).
+- **Comments** is left blank for the reviewer.
+- **No.** uses an auto-numbering formula, and the top summary counters update as
+  the team changes Status.
+
+### Add people to the Assign dropdown with flags
+
+```bash
+# repeat the flag as many times as you like
+python prowler_excel_tracker.py output --assignee tester1 --assignee tester2
+
+# or pass a comma separated list
+python prowler_excel_tracker.py output --assignees "tester1,tester2,tester3,tester4,tester5"
+```
+
+### Pre-fill the Assign column
+
+```bash
+python prowler_excel_tracker.py output --assign-all Aqmal     # everyone -> one person
+python prowler_excel_tracker.py output --round-robin          # spread across the team
+```
+
+### Options
+
+| Option | Description |
+| --- | --- |
+| `input` | Prowler output file (`.html` / `.csv` / `.ocsf.json`) **or** a folder. Default: `output` |
+| `-o, --output` | Output `.xlsx` path. Default: `<input-dir>/prowler-issues-tracker.xlsx` |
+| `--status` | Comma-separated statuses to include, or `all`. Default: `FAIL` |
+| `--assignee NAME` | Add a team member to the Assign dropdown (repeatable) |
+| `--assignees "A,B,C"` | Comma-separated team members to add to the Assign dropdown |
+| `--assign-all NAME` | Pre-fill the Assign column with this person for every finding |
+| `--round-robin` | Distribute findings across the team round-robin |
+| `--title`, `--sheet-name` | Customise the report title / worksheet name |
+| `--open` | Open the workbook when done |
+
+### Example
+
+```bash
+python prowler_excel_tracker.py output \
+    --assignee KT --assignee tester1 --assignees "tester2,tester3,tester5" \
+    --round-robin --open
+```
+
+```
+Findings added  : 151
+Severity        : Medium=103, Low=27, High=19, Critical=2
+Team (dropdown) : KT, Aqmal, Shalitha, Keshalya, Laviru
+Assignment      : round-robin
+```
+
+---
+
 ## Project structure
 
 ```
 prowler-report-generator/
-├── prowler_report.py   # the generator
+├── prowler_report.py         # HTML report generator (stdlib only)
+├── prowler_excel_tracker.py  # Excel assignment tracker (needs openpyxl)
 └── README.md
 ```
 
